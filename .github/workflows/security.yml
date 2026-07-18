@@ -1,0 +1,28 @@
+name: Security checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  browser-boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject Supabase credentials in browser files
+        run: |
+          if grep -Eiq 'sb_(publishable|secret)|service_role|SUPABASE_SECRET_KEY|apikey' index.html app.js styles.css; then
+            echo "A Supabase credential reference was found in a browser file."
+            exit 1
+          fi
+
+      - name: Verify server and client syntax
+        run: |
+          node --check server.js
+          node --check app.js

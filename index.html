@@ -186,6 +186,14 @@
       </form>
     </dialog>
 
+    <dialog id="serverDialog" class="expense-dialog settings-dialog" aria-labelledby="serverTitle">
+      <div>
+        <div class="dialog-head"><div><p class="eyebrow">SECURE DEPLOYMENT REQUIRED</p><h2 id="serverTitle">This page needs its app server</h2></div></div>
+        <p class="settings-copy">This is not a static-only website. It keeps Supabase credentials off the browser by using a secure server. Open the deployed application URL, or run <code>npm run start:local</code> and then visit <code>http://127.0.0.1:3000</code>.</p>
+        <p class="setup-note">GitHub Pages cannot run this server. The repository includes Docker and Render deployment configuration.</p>
+      </div>
+    </dialog>
+
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
   </body>

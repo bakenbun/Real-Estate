@@ -153,6 +153,7 @@ const server = createServer(async (request, response) => {
   const { pathname } = url;
 
   try {
+    if (request.method === 'GET' && pathname === '/api/health') return sendJson(response, 200, { ok: true });
     if (request.method === 'GET' && pathname === '/api/session') return sendJson(response, 200, { authenticated: activeSession(request) });
     if (request.method === 'POST' && pathname === '/api/session') {
       if (!trustedOrigin(request)) return sendJson(response, 403, { error: 'Request origin is not allowed.' });

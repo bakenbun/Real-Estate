@@ -5,7 +5,8 @@
   "description": "Private construction cost ledger with a server-side Supabase boundary.",
   "type": "module",
   "scripts": {
-    "start": "node --env-file=.env server.js",
+    "start": "node server.js",
+    "start:local": "node --env-file=.env server.js",
     "check": "node --check server.js && node --check app.js"
   }
 }

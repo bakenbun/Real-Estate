@@ -61,6 +61,11 @@ function showAccessDialog() {
   $('#accessPassword').focus();
 }
 
+function showServerRequired() {
+  const dialog = $('#serverDialog');
+  if (!dialog.open) dialog.showModal();
+}
+
 async function fetchExpenses() {
   try {
     state.expenses = await api('/api/expenses');
@@ -69,7 +74,7 @@ async function fetchExpenses() {
     state.expenses = DEFAULT_DATA;
     state.unlocked = false;
     if (error.status === 401) showAccessDialog();
-    else showToast('Could not reach the secure data server. Start server.js and try again.', true);
+    else showServerRequired();
   }
   renderAll();
 }
@@ -228,6 +233,6 @@ async function init() {
   try {
     const session = await api('/api/session');
     if (session.authenticated) await fetchExpenses(); else showAccessDialog();
-  } catch { showToast('Could not reach the secure data server. Start server.js and try again.', true); }
+  } catch { showServerRequired(); }
 }
 init();
