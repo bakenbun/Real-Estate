@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#14342f" />
+    <title>BuildLedger — Construction Cost Control</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Main navigation">
+        <a class="brand" href="#dashboard" aria-label="BuildLedger dashboard">
+          <span class="brand-mark"><i></i><i></i><i></i></span>
+          <span>Build<span>Ledger</span></span>
+        </a>
+
+        <p class="nav-label">Workspace</p>
+        <nav class="nav-list">
+          <a class="nav-link active" href="#dashboard" data-view="dashboard"><span class="nav-icon">⌂</span>Overview</a>
+          <a class="nav-link" href="#materials" data-view="materials"><span class="nav-icon">◈</span>Materials</a>
+          <a class="nav-link" href="#labour" data-view="labour"><span class="nav-icon">♧</span>Labour</a>
+          <a class="nav-link" href="#records" data-view="records"><span class="nav-icon">▤</span>All records</a>
+        </nav>
+
+        <div class="sidebar-foot">
+          <div class="project-card">
+            <span class="project-dot"></span>
+            <div>
+              <small>ACTIVE PROJECT</small>
+              <strong>Construction site</strong>
+            </div>
+          </div>
+          <span class="settings-link" aria-label="Secure server connection">● Secure connection</span>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow" id="viewKicker">PROJECT PULSE</p>
+            <h1 id="viewTitle">Good day, builder.</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" id="themeButton" type="button" aria-label="Toggle theme">◐</button>
+            <button class="primary-button" id="newExpenseButton" type="button"><span>＋</span> Add expense</button>
+          </div>
+        </header>
+
+        <section id="dashboardView" class="view active-view">
+          <div class="dashboard-intro">
+            <p>Keep materials, people, and cash moving in the right direction.</p>
+            <label class="date-filter">Period
+              <select id="periodFilter" aria-label="Dashboard period">
+                <option value="all">All time</option>
+                <option value="month">This month</option>
+                <option value="week">This week</option>
+              </select>
+            </label>
+          </div>
+
+          <section class="metric-grid" aria-label="Cost summary">
+            <article class="metric-card primary-metric">
+              <div class="metric-heading"><span>Total spent</span><span class="metric-icon">↗</span></div>
+              <strong id="totalSpent">Rs 0</strong>
+              <p id="totalSpentNote">Add your first expense to begin.</p>
+            </article>
+            <article class="metric-card">
+              <div class="metric-heading"><span>Materials</span><span class="metric-icon material">◈</span></div>
+              <strong id="materialsSpent">Rs 0</strong>
+              <p id="materialsRatio">0% of overall cost</p>
+            </article>
+            <article class="metric-card">
+              <div class="metric-heading"><span>Labour</span><span class="metric-icon labour">♧</span></div>
+              <strong id="labourSpent">Rs 0</strong>
+              <p id="labourRatio">0% of overall cost</p>
+            </article>
+            <article class="metric-card">
+              <div class="metric-heading"><span>Recorded entries</span><span class="metric-icon entries">▤</span></div>
+              <strong id="entryCount">0</strong>
+              <p id="entryCountNote">Across all categories</p>
+            </article>
+          </section>
+
+          <section class="dashboard-grid">
+            <article class="panel spend-panel">
+              <div class="panel-heading">
+                <div><p class="eyebrow">COST COMPOSITION</p><h2>Where the money goes</h2></div>
+                <span class="chip">Live analysis</span>
+              </div>
+              <div id="costBreakdown" class="breakdown-list"></div>
+              <div id="noBreakdown" class="empty-mini">Your category breakdown will appear here.</div>
+            </article>
+
+            <article class="panel insight-panel">
+              <div class="panel-heading">
+                <div><p class="eyebrow">SITE INSIGHT</p><h2>Cost health</h2></div>
+              </div>
+              <div class="health-orb"><span id="healthScore">—</span><small>/100</small></div>
+              <p id="healthText" class="health-text">Start recording expenses to receive a cost health signal.</p>
+              <div class="insight-rule"></div>
+              <div class="insight-stat"><span>Largest cost</span><strong id="largestCost">—</strong></div>
+            </article>
+          </section>
+
+          <section class="panel recent-panel">
+            <div class="panel-heading table-heading">
+              <div><p class="eyebrow">LATEST ACTIVITY</p><h2>Recent expenses</h2></div>
+              <button class="text-button" type="button" data-go-view="records">View all <span>→</span></button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>Item / work</th><th>Supplier / person</th><th>Type</th><th class="right">Amount</th></tr></thead>
+                <tbody id="recentTable"></tbody>
+              </table>
+              <div id="recentEmpty" class="empty-state table-empty">
+                <span class="empty-icon">▤</span><strong>No expenses yet</strong><p>Add material or labour costs to see your recent activity.</p>
+                <button class="small-primary" type="button" data-add-expense>Add first expense</button>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section id="materialsView" class="view">
+          <div class="section-banner material-banner"><div><p class="eyebrow">SITE INVENTORY</p><h2>Material cost register</h2><p>Track purchase price, quantities, and supplier history in one place.</p></div><button class="primary-button" type="button" data-add-expense data-default-group="material">＋ Add material</button></div>
+          <div class="material-cards" id="materialCards"></div>
+          <section class="panel records-panel">
+            <div class="panel-heading"><div><p class="eyebrow">PURCHASE HISTORY</p><h2>Material entries</h2></div></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Material</th><th>Supplier</th><th>Quantity</th><th>Rate</th><th class="right">Total</th><th></th></tr></thead><tbody id="materialsTable"></tbody></table><div id="materialsEmpty" class="empty-state table-empty"><span class="empty-icon">◈</span><strong>No material purchases yet</strong><p>Record bricks, steel, bajri, or bajar purchases.</p></div></div>
+          </section>
+        </section>
+
+        <section id="labourView" class="view">
+          <div class="section-banner labour-banner"><div><p class="eyebrow">ON-SITE CREW</p><h2>Labour payment register</h2><p>Keep a clear record of every worker payment and completed job.</p></div><button class="primary-button" type="button" data-add-expense data-default-group="labour">＋ Add labour cost</button></div>
+          <div class="labour-summary" id="labourCards"></div>
+          <section class="panel records-panel">
+            <div class="panel-heading"><div><p class="eyebrow">PAYMENT HISTORY</p><h2>Labour entries</h2></div></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Worker</th><th>Work category / done</th><th>Notes</th><th class="right">Amount</th><th></th></tr></thead><tbody id="labourTable"></tbody></table><div id="labourEmpty" class="empty-state table-empty"><span class="empty-icon">♧</span><strong>No labour payments yet</strong><p>Record mistri, plumber, and electrician payments.</p></div></div>
+          </section>
+        </section>
+
+        <section id="recordsView" class="view">
+          <div class="section-banner records-banner"><div><p class="eyebrow">COMPLETE LEDGER</p><h2>Every recorded cost</h2><p>Search, filter, and manage your construction-site spend.</p></div></div>
+          <section class="panel records-panel">
+            <div class="ledger-tools">
+              <label class="search-field"><span>⌕</span><input id="searchInput" type="search" placeholder="Search supplier, item, or work..." /></label>
+              <label class="select-field"><span>Show</span><select id="recordGroupFilter"><option value="all">All entries</option><option value="material">Materials</option><option value="labour">Labour</option></select></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Supplier / person</th><th>Category</th><th>Quantity / work</th><th class="right">Amount</th><th></th></tr></thead><tbody id="recordsTable"></tbody></table><div id="recordsEmpty" class="empty-state table-empty"><span class="empty-icon">▤</span><strong>No matching records</strong><p>Try another search or add a new expense.</p></div></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="expenseDialog" class="expense-dialog">
+      <form id="expenseForm" method="dialog">
+        <div class="dialog-head"><div><p class="eyebrow">NEW LEDGER ENTRY</p><h2>Add an expense</h2></div><button class="close-button" type="button" data-close-dialog aria-label="Close">×</button></div>
+        <div class="expense-toggle" role="group" aria-label="Expense type"><button type="button" class="toggle-button active" data-group-choice="material">Materials</button><button type="button" class="toggle-button" data-group-choice="labour">Labour</button></div>
+        <input type="hidden" id="expenseGroup" name="expenseGroup" value="material" />
+        <div class="form-grid">
+          <label>Date<input id="entryDate" name="entryDate" type="date" required /></label>
+          <label>Item / worker<select id="expenseType" name="expenseType" required></select></label>
+          <label id="categoryField">Category / quality<input id="category" name="category" type="text" placeholder="e.g. A-grade, 60-grade" /></label>
+          <label id="supplierField">Supplier<input id="supplier" name="supplier" type="text" placeholder="Supplier name" /></label>
+          <label id="quantityField">Quantity<input id="quantity" name="quantity" type="number" min="0" step="any" placeholder="0" /></label>
+          <label id="unitField">Unit<select id="unit" name="unit"></select></label>
+          <label id="rateField">Price per unit (Rs)<input id="unitPrice" name="unitPrice" type="number" min="0" step="0.01" placeholder="0" /></label>
+          <label id="workField" class="hidden">Work category / done<input id="workCategory" name="workCategory" type="text" placeholder="e.g. Bathroom fitting completed" /></label>
+          <label class="total-field">Total paid (Rs)<input id="amount" name="amount" type="number" min="0" step="0.01" placeholder="0" required /><small id="amountHint">Calculated from quantity × rate when both are provided.</small></label>
+          <label class="full-width">Notes <textarea id="notes" name="notes" rows="2" placeholder="Optional details, delivery notes, etc."></textarea></label>
+        </div>
+        <div class="dialog-actions"><button class="secondary-button" type="button" data-close-dialog>Cancel</button><button class="primary-button" id="saveExpense" type="submit">Save expense</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="accessDialog" class="expense-dialog settings-dialog" aria-labelledby="accessTitle">
+      <form id="accessForm" method="dialog">
+        <div class="dialog-head"><div><p class="eyebrow">PRIVATE WORKSPACE</p><h2 id="accessTitle">Unlock BuildLedger</h2></div></div>
+        <p class="settings-copy">Enter the workspace password configured on the server. Database credentials never enter this browser.</p>
+        <label>Workspace password<input id="accessPassword" type="password" autocomplete="current-password" required /></label>
+        <p class="setup-note">Your session is stored in a secure, HTTP-only cookie and expires when the server restarts.</p>
+        <div class="dialog-actions"><button class="primary-button" id="accessSubmit" type="submit">Unlock workspace</button></div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
