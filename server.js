@@ -147,7 +147,7 @@ async function serveFile(request, response, pathname) {
   } catch { sendJson(response, 404, { error: 'Not found.' }); }
 }
 
-const server = createServer(async (request, response) => {
+export default async function handler(request, response) {
   purgeExpiredSessions();
   const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
   const { pathname } = url;
@@ -193,6 +193,9 @@ const server = createServer(async (request, response) => {
     console.error(error);
     return sendJson(response, 400, { error: 'Request could not be completed.' });
   }
-});
+}
 
-server.listen(port, host, () => console.log(`BuildLedger is running at http://${host}:${port}`));
+if (!process.env.VERCEL) {
+  const server = createServer(handler);
+  server.listen(port, host, () => console.log(`BuildLedger is running at http://${host}:${port}`));
+}
