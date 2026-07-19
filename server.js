@@ -20,8 +20,8 @@ const production = process.env.NODE_ENV === 'production';
 const sessions = new Map();
 const sessionLifetimeMs = 12 * 60 * 60 * 1000;
 
-if (!/^https:\/\/.+\.supabase\.co$/.test(supabaseUrl) || !supabaseSecretKey || !workspacePassword) {
-  console.error('Missing SUPABASE_URL, SUPABASE_SECRET_KEY, or WORKSPACE_PASSWORD. Copy .env.example to .env and set all values.');
+if (!/^https:\/\/.+\.supabase\.co$/.test(supabaseUrl) || !supabaseSecretKey) {
+  console.error('Missing SUPABASE_URL or SUPABASE_SECRET_KEY. Copy .env.example to .env and set all values.');
   process.exit(1);
 }
 
@@ -54,12 +54,7 @@ function cookieValue(request, name) {
 }
 
 function activeSession(request) {
-  const token = cookieValue(request, 'buildledger_session');
-  const expiresAt = token && sessions.get(token);
-  if (!expiresAt || expiresAt <= Date.now()) {
-    if (token) sessions.delete(token);
-    return false;
-  }
+  // Direct access is enabled: no password required, always authenticated
   return true;
 }
 
