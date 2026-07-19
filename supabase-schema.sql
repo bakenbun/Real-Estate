@@ -5,7 +5,7 @@ create table if not exists public.construction_expenses (
   id uuid primary key default gen_random_uuid(),
   entry_date date not null default current_date,
   expense_group text not null check (expense_group in ('material', 'labour')),
-  expense_type text not null check (expense_type in ('bricks', 'steel', 'crush_stone', 'bajar', 'mistri', 'plumber', 'electrician')),
+  expense_type text not null check (expense_type in ('bricks', 'steel', 'crush_stone', 'bajar', 'cement', 'rait', 'mistri', 'mazdur', 'plumber', 'electrician')),
   category text,
   supplier text,
   quantity numeric(14,2),

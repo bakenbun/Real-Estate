@@ -25,7 +25,7 @@ if (!/^https:\/\/.+\.supabase\.co$/.test(supabaseUrl) || !supabaseSecretKey) {
   process.exit(1);
 }
 
-const expenseTypes = new Set(['bricks', 'steel', 'crush_stone', 'bajar', 'mistri', 'plumber', 'electrician']);
+const expenseTypes = new Set(['bricks', 'steel', 'crush_stone', 'bajar', 'cement', 'rait', 'mistri', 'mazdur', 'plumber', 'electrician']);
 const expenseGroups = new Set(['material', 'labour']);
 const staticTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -104,7 +104,7 @@ function validateExpense(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value.entry_date || '')) throw new Error('A valid entry date is required.');
   if (!expenseGroups.has(value.expense_group) || !expenseTypes.has(value.expense_type)) throw new Error('Invalid expense type.');
   const isMaterial = value.expense_group === 'material';
-  if (isMaterial !== ['bricks', 'steel', 'crush_stone', 'bajar'].includes(value.expense_type)) throw new Error('Expense group and type do not match.');
+  if (isMaterial !== ['bricks', 'steel', 'crush_stone', 'bajar', 'cement', 'rait'].includes(value.expense_type)) throw new Error('Expense group and type do not match.');
   return {
     entry_date: value.entry_date,
     expense_group: value.expense_group,

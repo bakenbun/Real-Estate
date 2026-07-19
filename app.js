@@ -6,11 +6,14 @@ const EXPENSE_TYPES = {
     steel: { label: 'Steel', unit: 'tons', symbol: '╬', color: '#6576a9' },
     crush_stone: { label: 'Crush stone (Bajri)', unit: 'cft', symbol: '◆', color: '#6b9b8a' },
     bajar: { label: 'Bajar', unit: 'cft', symbol: '◒', color: '#b68141' },
+    cement: { label: 'Cement', unit: 'bags', symbol: '◉', color: '#7a8b6f' },
+    rait: { label: 'Rait', unit: 'kg', symbol: '⫘', color: '#8b6e5a' },
   },
   labour: {
-    mistri: { label: 'Mistri', unit: 'payment', symbol: '♧', color: '#5067a8' },
+    mistri: { label: 'Mistri', unit: 'payment', symbol: '♧', color: '#5067a8', parent: 'Contractor' },
+    mazdur: { label: 'Mazdur', unit: 'payment', symbol: '⛏', color: '#6e7fb5', parent: 'Contractor' },
+    electrician: { label: 'Electrician', unit: 'payment', symbol: 'ϟ', color: '#a9687b', parent: 'Contractor' },
     plumber: { label: 'Plumber', unit: 'payment', symbol: '⌁', color: '#367d96' },
-    electrician: { label: 'Electrician', unit: 'payment', symbol: 'ϟ', color: '#a9687b' },
   },
 };
 
@@ -179,7 +182,29 @@ function setExpenseGroup(group) {
   $('#expenseGroup').value = group;
   $$('.toggle-button').forEach(btn => btn.classList.toggle('active', btn.dataset.groupChoice === group));
   const types = EXPENSE_TYPES[group];
-  $('#expenseType').innerHTML = Object.entries(types).map(([key, info]) => `<option value="${key}">${info.label}</option>`).join('');
+  if (group === 'labour') {
+    // Group labour types under optgroup headers (Contractor vs standalone)
+    const grouped = {};
+    const standalone = [];
+    for (const [key, info] of Object.entries(types)) {
+      if (info.parent) {
+        if (!grouped[info.parent]) grouped[info.parent] = [];
+        grouped[info.parent].push([key, info]);
+      } else {
+        standalone.push([key, info]);
+      }
+    }
+    let html = '';
+    for (const [parentLabel, items] of Object.entries(grouped)) {
+      html += `<optgroup label="${parentLabel}">`;
+      html += items.map(([key, info]) => `<option value="${key}">${info.label}</option>`).join('');
+      html += '</optgroup>';
+    }
+    html += standalone.map(([key, info]) => `<option value="${key}">${info.label}</option>`).join('');
+    $('#expenseType').innerHTML = html;
+  } else {
+    $('#expenseType').innerHTML = Object.entries(types).map(([key, info]) => `<option value="${key}">${info.label}</option>`).join('');
+  }
   $('#categoryField').classList.toggle('hidden', group === 'labour'); $('#supplierField').classList.toggle('hidden', group === 'labour');
   $('#quantityField').classList.toggle('hidden', group === 'labour'); $('#unitField').classList.toggle('hidden', group === 'labour'); $('#rateField').classList.toggle('hidden', group === 'labour'); $('#workField').classList.toggle('hidden', group === 'material');
   $('#amountHint').textContent = group === 'material' ? 'Calculated from quantity × rate when both are provided.' : 'Enter the payment made to this worker.';
@@ -208,7 +233,7 @@ function downloadPdfReport() {
 
   let categoryRows = '';
   for (const c of categories) {
-    const isMaterial = ['bricks', 'steel', 'crush_stone', 'bajar'].includes(c.key);
+    const isMaterial = ['bricks', 'steel', 'crush_stone', 'bajar', 'cement', 'rait'].includes(c.key);
     const badgeClass = isMaterial ? 'material' : 'labour';
     const qtyText = c.quantity ? `${formatNumber(c.quantity)} ${escapeHtml(c.unit)}` : '—';
     categoryRows += `
