@@ -371,6 +371,16 @@ function bindEvents() {
 }
 
 async function init() {
+  // Register PWA Service Worker
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.register('./sw.js');
+      console.log('[PWA] Service Worker registered with scope:', reg.scope);
+    } catch (err) {
+      console.error('[PWA] Service Worker registration failed:', err);
+    }
+  }
+
   // Remove configuration saved by the retired direct-to-Supabase browser build.
   // This intentionally clears only non-persistent preview data and the old public key.
   try {

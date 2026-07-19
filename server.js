@@ -27,7 +27,14 @@ if (!/^https:\/\/.+\.supabase\.co$/.test(supabaseUrl) || !supabaseSecretKey) {
 
 const expenseTypes = new Set(['bricks', 'steel', 'crush_stone', 'bajar', 'mistri', 'plumber', 'electrician']);
 const expenseGroups = new Set(['material', 'labour']);
-const staticTypes = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8' };
+const staticTypes = {
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon'
+};
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const securityHeaders = {
   'Content-Security-Policy': "default-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
@@ -134,7 +141,9 @@ async function supabase(path, options = {}) {
 async function serveFile(request, response, pathname) {
   const requested = pathname === '/' ? 'index.html' : pathname.slice(1);
   const safePath = normalize(requested).replace(/^([/\\])+/, '');
-  if (!['index.html', 'app.js', 'styles.css'].includes(safePath)) return sendJson(response, 404, { error: 'Not found.' });
+  const isIcon = safePath.startsWith('icons/') && (safePath.endsWith('.png') || safePath.endsWith('.ico'));
+  const isStatic = ['index.html', 'app.js', 'styles.css', 'manifest.json', 'sw.js'].includes(safePath) || isIcon;
+  if (!isStatic) return sendJson(response, 404, { error: 'Not found.' });
   try {
     const data = await readFile(join(root, safePath));
     response.writeHead(200, { ...securityHeaders, 'Content-Type': staticTypes[extname(safePath)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
