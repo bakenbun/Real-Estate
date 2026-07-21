@@ -5,7 +5,7 @@
  * process environment and is never sent to the browser, local storage, or git.
  */
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { timingSafeEqual, randomBytes } from 'node:crypto';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -131,11 +131,112 @@ async function supabase(path, options = {}) {
     },
   });
   if (!response.ok) {
-    console.error(`Supabase request failed (${response.status}):`, await response.text());
-    throw new Error('Database request failed.');
+    const raw = await response.text();
+    console.error(`Supabase request failed (${response.status}):`, raw);
+    let message = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      message = parsed.message || parsed.error || parsed.hint || raw;
+    } catch { /* raw text already suitable */ }
+    const err = new Error(`Supabase ${response.status}: ${String(message).slice(0, 400)}`);
+    err.status = response.status;
+    err.supabase = true;
+    throw err;
   }
   if (response.status === 204) return null;
   return response.json();
+}
+
+/* ---------- Local text-file backup ----------
+ * On every Supabase write/delete we mirror the full record set to a plain-text
+ * JSON file on disk. If Supabase is unreachable, writes are also queued so they
+ * can be flushed automatically the next time the server starts.
+ *
+ * Files live outside the git repo and outside the served static set:
+ *   BACKUP_DIR/expenses.json   -> pretty-printed authoritative snapshot
+ *   BACKUP_DIR/pending.jsonl   -> newline-delimited queue of unsent writes
+ *
+ * Filesystem writes are skipped on Vercel (read-only FS).
+ */
+const backupEnabled = !process.env.VERCEL && process.env.DISABLE_LOCAL_BACKUP !== '1';
+const backupDir = process.env.BACKUP_DIR || join(root, 'data');
+const backupFile = join(backupDir, 'expenses.json');
+const pendingFile = join(backupDir, 'pending.jsonl');
+
+async function ensureBackupDir() {
+  if (!backupEnabled) return;
+  await mkdir(backupDir, { recursive: true });
+}
+
+async function writeSnapshot(records) {
+  if (!backupEnabled) return;
+  await ensureBackupDir();
+  const body = JSON.stringify({ updated_at: new Date().toISOString(), count: records.length, records }, null, 2);
+  const tmp = `${backupFile}.tmp`;
+  await writeFile(tmp, body, 'utf8');
+  await rename(tmp, backupFile);
+}
+
+async function readSnapshot() {
+  if (!backupEnabled) return null;
+  try {
+    const raw = await readFile(backupFile, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : (parsed.records || []);
+  } catch { return null; }
+}
+
+async function queuePending(op) {
+  if (!backupEnabled) return;
+  await ensureBackupDir();
+  const line = JSON.stringify({ ...op, queued_at: new Date().toISOString() }) + '\n';
+  await writeFile(pendingFile, line, { flag: 'a', encoding: 'utf8' });
+}
+
+async function drainPending() {
+  if (!backupEnabled) return;
+  let raw;
+  try { raw = await readFile(pendingFile, 'utf8'); } catch { return; }
+  const lines = raw.split('\n').filter(Boolean);
+  const survivors = [];
+  for (const line of lines) {
+    let op;
+    try { op = JSON.parse(line); } catch { continue; }
+    try {
+      if (op.type === 'insert') {
+        await supabase('construction_expenses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(op.record) });
+      } else if (op.type === 'delete' && op.id) {
+        await supabase(`construction_expenses?id=eq.${encodeURIComponent(op.id)}`, { method: 'DELETE' });
+      }
+    } catch (err) {
+      console.warn('[backup] deferred op still failing, will retry next startup:', err.message);
+      survivors.push(line);
+    }
+  }
+  if (survivors.length) await writeFile(pendingFile, survivors.join('\n') + '\n', 'utf8');
+  else await writeFile(pendingFile, '', 'utf8');
+}
+
+async function refreshSnapshotFromSupabase() {
+  if (!backupEnabled) return;
+  try {
+    const records = await supabase('construction_expenses?select=*&order=entry_date.desc,created_at.desc');
+    await writeSnapshot(records || []);
+    console.log(`[backup] Snapshot refreshed (${(records || []).length} records) -> ${backupFile}`);
+  } catch (err) {
+    console.warn('[backup] Could not refresh snapshot from Supabase:', err.message);
+  }
+}
+
+async function bootstrapBackup() {
+  if (!backupEnabled) return;
+  try {
+    await ensureBackupDir();
+    await drainPending();
+    await refreshSnapshotFromSupabase();
+  } catch (err) {
+    console.warn('[backup] Bootstrap failed (non-fatal):', err.message);
+  }
 }
 
 async function serveFile(request, response, pathname) {
@@ -174,18 +275,51 @@ export default async function handler(request, response) {
       if (!trustedOrigin(request)) return sendJson(response, 403, { error: 'Request origin is not allowed.' });
 
       if (request.method === 'GET' && pathname === '/api/expenses') {
-        const records = await supabase('construction_expenses?select=*&order=entry_date.desc,created_at.desc');
-        return sendJson(response, 200, records);
+        try {
+          const records = await supabase('construction_expenses?select=*&order=entry_date.desc,created_at.desc');
+          await writeSnapshot(records || []);
+          return sendJson(response, 200, records);
+        } catch (err) {
+          const fallback = await readSnapshot();
+          if (fallback) {
+            console.warn('[backup] Serving GET from local snapshot:', err.message);
+            return sendJson(response, 200, fallback);
+          }
+          throw err;
+        }
       }
       if (request.method === 'POST' && pathname === '/api/expenses') {
         const expense = validateExpense(await readJson(request));
-        const [created] = await supabase('construction_expenses', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify(expense) });
-        return sendJson(response, 201, created);
+        try {
+          const [created] = await supabase('construction_expenses', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify(expense) });
+          const snap = (await readSnapshot()) || [];
+          await writeSnapshot([created, ...snap]);
+          return sendJson(response, 201, created);
+        } catch (err) {
+          // If the server was reachable but rejected the row (validation, constraint), don't queue — surface it.
+          if (err.supabase && err.status && err.status >= 400 && err.status < 500) throw err;
+          // Otherwise treat as offline: queue and stash a local copy so the user does not lose the entry.
+          const localId = `pending-${randomBytes(8).toString('hex')}`;
+          const stash = { ...expense, id: localId, created_at: new Date().toISOString(), pending_sync: true };
+          await queuePending({ type: 'insert', record: expense });
+          const snap = (await readSnapshot()) || [];
+          await writeSnapshot([stash, ...snap]);
+          console.warn('[backup] Supabase POST failed, saved locally for later sync:', err.message);
+          return sendJson(response, 202, stash);
+        }
       }
       if (request.method === 'DELETE' && pathname.startsWith('/api/expenses/')) {
         const id = pathname.slice('/api/expenses/'.length);
         if (!uuid.test(id)) return sendJson(response, 400, { error: 'Invalid expense id.' });
-        await supabase(`construction_expenses?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+        try {
+          await supabase(`construction_expenses?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+        } catch (err) {
+          if (err.supabase && err.status && err.status >= 400 && err.status < 500) throw err;
+          await queuePending({ type: 'delete', id });
+          console.warn('[backup] Supabase DELETE failed, queued for retry:', err.message);
+        }
+        const snap = await readSnapshot();
+        if (snap) await writeSnapshot(snap.filter(r => r.id !== id));
         return sendJson(response, 200, { deleted: true });
       }
       return sendJson(response, 405, { error: 'Method not allowed.' });
@@ -195,11 +329,13 @@ export default async function handler(request, response) {
     return sendJson(response, 405, { error: 'Method not allowed.' });
   } catch (error) {
     console.error(error);
-    return sendJson(response, 400, { error: 'Request could not be completed.' });
+    const status = Number.isInteger(error.status) ? error.status : 400;
+    return sendJson(response, status, { error: error.message || 'Request could not be completed.' });
   }
 }
 
 if (!process.env.VERCEL) {
   const server = createServer(handler);
   server.listen(port, host, () => console.log(`BuildLedger is running at http://${host}:${port}`));
+  bootstrapBackup();
 }

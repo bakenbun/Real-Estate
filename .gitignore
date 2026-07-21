@@ -6,3 +6,7 @@
 *.key
 __pycache__/
 *.py[cod]
+
+# Local text-file backup (never commit real ledger data)
+data/
+
